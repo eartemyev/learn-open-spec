@@ -1,0 +1,7 @@
+node_modules
+*.log
+npm-cache
+tmp
+dist
+coverage
+/.vs
