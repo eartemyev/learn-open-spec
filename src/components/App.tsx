@@ -16,15 +16,57 @@ const describeSource = (source: AccessSource, config: Config): string => {
 export const App = () => {
   const { config, checkAccess, grantPermission, revokePermission, exportJson, importJson } =
     useSimulator();
+  const [groupId, setGroupId] = useState("");
   const [userId, setUserId] = useState("");
   const [serviceId, setServiceId] = useState("");
 
-  const result = userId && serviceId ? checkAccess(userId, serviceId) : null;
+  const selectedGroupId = config.groups.some((group) => group.id === groupId) ? groupId : "";
+  if (groupId !== selectedGroupId) {
+    setGroupId(selectedGroupId);
+  }
+  const visibleUsers = config.users.filter(
+    (user) => !selectedGroupId || user.groupIds.includes(selectedGroupId),
+  );
+
+  const selectedUserId = visibleUsers.some((user) => user.id === userId) ? userId : "";
+  if (userId !== selectedUserId) {
+    setUserId(selectedUserId);
+  }
+
+  const selectedServiceId = config.services.some((service) => service.id === serviceId)
+    ? serviceId
+    : "";
+  if (serviceId !== selectedServiceId) {
+    setServiceId(selectedServiceId);
+  }
+
+  const result =
+    selectedUserId && selectedServiceId ? checkAccess(selectedUserId, selectedServiceId) : null;
 
   return (
     <Container size="sm" py="xl">
       <Stack gap="md">
         <Title order={1}>Симулятор политик доступа</Title>
+        <NativeSelect
+          label="Группа"
+          value={groupId}
+          onChange={(event) => {
+            const nextGroupId = event.currentTarget.value;
+            setGroupId(nextGroupId);
+            if (
+              !config.users.some(
+                (user) =>
+                  user.id === userId && (!nextGroupId || user.groupIds.includes(nextGroupId)),
+              )
+            ) {
+              setUserId("");
+            }
+          }}
+          data={[
+            { value: "", label: "Все группы" },
+            ...config.groups.map((group) => ({ value: group.id, label: group.name })),
+          ]}
+        />
         <NativeSelect
           label="Сотрудник"
           data-testid="user-select"
@@ -32,7 +74,7 @@ export const App = () => {
           onChange={(event) => setUserId(event.currentTarget.value)}
           data={[
             { value: "", label: "Не выбран" },
-            ...config.users.map((user) => ({ value: user.id, label: user.name })),
+            ...visibleUsers.map((user) => ({ value: user.id, label: user.name })),
           ]}
         />
         <NativeSelect
@@ -45,6 +87,7 @@ export const App = () => {
             ...config.services.map((service) => ({ value: service.id, label: service.name })),
           ]}
         />
+        {groupId && visibleUsers.length === 0 && <Text>В этой группе нет сотрудников</Text>}
         <Paper withBorder p="md">
           <Text data-testid="access-result" fw={600}>
             {result === null
